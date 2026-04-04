@@ -1,0 +1,7 @@
+{
+    "hall": {
+        "length_m": 100,
+        "width_m": 50,
+        "max_capacity_kg": 500000
+    }
+}

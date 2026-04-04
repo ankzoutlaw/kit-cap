@@ -1,0 +1,4 @@
+# Digital Twin Prototype — dependencies
+streamlit>=1.30
+matplotlib>=3.7
+pandas>=2.0
