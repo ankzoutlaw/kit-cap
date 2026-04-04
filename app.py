@@ -1,9 +1,12 @@
 """Kit_Cap - Data Center Digital Twin - Streamlit Dashboard."""
 
 import streamlit as st
+import matplotlib
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 import pandas as pd
+
+matplotlib.rcParams["font.family"] = "DejaVu Sans"
 
 from src.hall import Hall, ZONES, ZONE_RISK_THRESHOLD
 from src.load import Load
@@ -71,6 +74,40 @@ def get_loads(scenario):
     return DEFAULT_LOADS
 
 
+def _predict_ticks_to_unsafe(history):
+    """Estimate ticks until the hottest zone crosses the risk threshold.
+
+    Uses the last two snapshots to compute the risk rate of the fastest-
+    rising zone, then linearly extrapolates to ZONE_RISK_THRESHOLD.
+    Returns None if no zone is rising or already all blocked.
+    """
+    if len(history) < 2:
+        return None
+
+    prev = history[-2]["zone_risk"]
+    curr = history[-1]["zone_risk"]
+
+    best_ticks = None
+    for zone in curr:
+        risk = curr[zone]
+        if risk >= ZONE_RISK_THRESHOLD:
+            continue  # already blocked
+        delta = risk - prev[zone]
+        if delta <= 0:
+            continue  # not rising
+        remaining = ZONE_RISK_THRESHOLD - risk
+        ticks = remaining / delta
+        if best_ticks is None or ticks < best_ticks:
+            best_ticks = ticks
+
+    return round(best_ticks) if best_ticks is not None else None
+
+
+def _safest_zone(hidden_state):
+    """Return the zone name with the lowest current risk."""
+    return min(hidden_state.zone_risk, key=hidden_state.zone_risk.get)
+
+
 def try_place_logged(engine, load):
     """Place equipment and log the reason if rejected."""
     hall = engine.hall
@@ -84,10 +121,16 @@ def try_place_logged(engine, load):
         within_cap = (hall.current_capacity() + load.weight_kg) <= hall.max_capacity_kg
         if not in_bounds:
             reason = "Out of bounds"
+            recommendation = ""
         elif not within_cap:
             reason = "Exceeds hall capacity"
+            recommendation = ""
         else:
-            reason = f"Zone risk too high ({risk:.2f} >= {ZONE_RISK_THRESHOLD})"
+            reason = "Placement blocked: zone thermal risk exceeds safe threshold"
+            best = _safest_zone(hs)
+            best_risk = hs.zone_risk[best]
+            best_label = best.replace("_", " ")
+            recommendation = f"Recommended: place in {best_label} (risk {best_risk:.2f})"
 
         st.session_state.rejection_log.append({
             "Equipment": load.id,
@@ -95,6 +138,7 @@ def try_place_logged(engine, load):
             "Zone": zone.replace("_", " ").title(),
             "Risk": f"{risk:.2f}",
             "Reason": reason,
+            "Recommendation": recommendation,
         })
     return ok
 
@@ -110,9 +154,9 @@ ZONE_COLORS_BASE = {
 }
 
 ZONE_LABELS = {
-    "cool_zone": "Cool Zone\n(0-33m)",
-    "normal_zone": "Normal Zone\n(33-66m)",
-    "stressed_zone": "Stressed Zone\n(66-100m)",
+    "cool_zone": "Cool Zone\n(0\u201333m)",
+    "normal_zone": "Normal Zone\n(33\u201366m)",
+    "stressed_zone": "Stressed Zone\n(66\u2013100m)",
 }
 
 
@@ -268,6 +312,7 @@ def main():
     # --- What this demonstrates ---
     with st.expander("What this demonstrates", expanded=False):
         st.markdown(
+            "**Safe capacity \u2260 available capacity.**\n\n"
             "Kit_Cap models a single **data hall** as a digital twin "
             "- a live simulation that tracks more than what operators can see.\n\n"
             "- **Visible state:** utilization, headroom, sensor readings\n"
@@ -327,12 +372,16 @@ def main():
     latest = history[-1]
 
     # --- KPI cards ---
-    cols = st.columns(5)
+    predicted = _predict_ticks_to_unsafe(history)
+    predicted_label = f"~{predicted} ticks" if predicted is not None else "N/A"
+
+    cols = st.columns(6)
     cols[0].metric("Utilization", f"{latest['utilization_pct']:.1f}%")
     cols[1].metric("Headroom", f"{latest['headroom_pct']:.1f}%")
     cols[2].metric("Thermal Stress", f"{latest['thermal_stress']:.3f}")
     cols[3].metric("Wear Level", f"{latest['wear_level']:.3f}")
     cols[4].metric("Unsafe Placements Prevented", str(latest["rejected_count"]))
+    cols[5].metric("Time to Unsafe State", predicted_label)
 
     # --- Hall view ---
     st.subheader("Data Hall Layout & Zone Risk")
