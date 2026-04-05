@@ -45,7 +45,7 @@ Open `http://localhost:8501`, pick a scenario, step through the simulation.
 ## Dashboard features
 
 ### Step-by-step simulation control
-The simulation is fully user-controlled for demo and interview use:
+The simulation is fully user-controlled:
 - **Step** — advance exactly 1 tick
 - **Run 5** — advance 5 ticks at once
 - **Reset** — restart from baseline for the active scenario
@@ -106,18 +106,18 @@ Four time-series charts that grow as you step:
 
 ---
 
-## Interview walkthrough
+## Walkthrough
 
 1. Open the app — starts at tick 0 with equipment placed and baseline metrics
 2. Read the callout: *"Safe capacity is not the same as available capacity"*
 3. Select **Thermal Hotspot** scenario
 4. Click **Step** 10–15 times — watch Stressed Zone risk climb
-5. When the zone turns red with hatching: *"The twin just blocked that zone"*
+5. When the zone turns red with hatching, the twin has blocked that zone
 6. Scroll to **Placement Decision Demo** → click **Run Placement Story**
-7. Show the narrative: *"System blocked unsafe placement and redirected to Cool Zone"*
-8. Point to Visible vs Hidden state split: *"Operators see 79% utilization. The twin sees risk they can't."*
-9. Toggle **Auto-run** briefly, then freeze at an interesting moment
-10. Switch to a different scenario to show another failure mode
+7. See the narrative: *"System blocked unsafe placement and redirected to Cool Zone"*
+8. Note the Visible vs Hidden state split — operators see utilization, the twin sees risk they can't
+9. Toggle **Auto-run** briefly, then pause at an interesting moment
+10. Switch to a different scenario to explore another failure mode
 
 ---
 
