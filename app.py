@@ -15,13 +15,29 @@ from sim.engine import SimulationEngine
 from sim.scenarios import SCENARIOS, apply_scenario
 
 # ---------------------------------------------------------------------------
-# Brand colors
+# M3 Expressive Color Tokens
 # ---------------------------------------------------------------------------
-RED = "#ED1C24"
-DARK_RED = "#B71C1C"
-DARK_GREY = "#333333"
-MID_GREY = "#666666"
-LIGHT_GREY = "#F5F5F5"
+PRIMARY = "#006A6A"
+ON_PRIMARY = "#FFFFFF"
+PRIMARY_CONTAINER = "#6FF7F6"
+ON_PRIMARY_CONTAINER = "#002020"
+SECONDARY = "#4A6363"
+ON_SECONDARY = "#FFFFFF"
+SECONDARY_CONTAINER = "#CCE8E7"
+ON_SECONDARY_CONTAINER = "#051F1F"
+TERTIARY = "#4B607C"
+ON_TERTIARY = "#FFFFFF"
+TERTIARY_CONTAINER = "#D3E4FF"
+ON_TERTIARY_CONTAINER = "#041C35"
+ERROR = "#BA1A1A"
+ON_ERROR = "#FFFFFF"
+ERROR_CONTAINER = "#FFEDEA"
+SURFACE = "#F5FAFA"
+ON_SURFACE = "#171D1D"
+SURFACE_CONTAINER = "#E0E8E8"
+SURFACE_CONTAINER_HIGH = "#D5DEDE"
+OUTLINE = "#6F7979"
+OUTLINE_VARIANT = "#BEC9C8"
 GREEN = "#2E7D32"
 AMBER = "#E65100"
 
@@ -356,9 +372,9 @@ def _predict_ticks_to_unsafe(history):
 # ---------------------------------------------------------------------------
 
 ZONE_COLORS_BASE = {
-    "cool_zone": (0.85, 0.92, 0.98),
-    "normal_zone": (0.93, 0.93, 0.93),
-    "stressed_zone": (1.0, 0.90, 0.88),
+    "cool_zone": (0.44, 0.97, 0.96),       # M3 primary-container tint
+    "normal_zone": (0.88, 0.91, 0.91),      # M3 surface-container tint
+    "stressed_zone": (1.0, 0.90, 0.88),     # warm tint
 }
 
 
@@ -368,11 +384,11 @@ def lerp_color(base, hot, t):
 
 def draw_hall(hall, hidden_state):
     fig, ax = plt.subplots(figsize=(9, 4))
-    fig.patch.set_facecolor("white")
-    ax.set_facecolor("white")
+    fig.patch.set_facecolor(SURFACE)
+    ax.set_facecolor(SURFACE)
     third = hall.length_m / 3
 
-    hot = (0.93, 0.11, 0.14)
+    hot = (0.73, 0.10, 0.10)  # M3 error color
     zone_names = list(ZONES)
 
     for i, zone in enumerate(zone_names):
@@ -380,11 +396,12 @@ def draw_hall(hall, hidden_state):
         color = lerp_color(ZONE_COLORS_BASE[zone], hot, risk)
         blocked = risk >= ZONE_RISK_THRESHOLD
 
-        # Zone rectangle
-        rect = patches.Rectangle(
-            (i * third, 0), third, hall.width_m,
+        # Zone rectangle with rounded corners
+        rect = patches.FancyBboxPatch(
+            (i * third + 0.5, 0.5), third - 1, hall.width_m - 1,
+            boxstyle="round,pad=0.5",
             facecolor=color,
-            edgecolor=DARK_RED if blocked else "#999999",
+            edgecolor=ERROR if blocked else OUTLINE_VARIANT,
             linewidth=3.0 if blocked else 1.5,
             linestyle="--" if blocked else "-",
         )
@@ -394,7 +411,7 @@ def draw_hall(hall, hidden_state):
         if blocked:
             hatch_rect = patches.Rectangle(
                 (i * third, 0), third, hall.width_m,
-                facecolor="none", edgecolor=DARK_RED,
+                facecolor="none", edgecolor=ERROR,
                 linewidth=0, hatch="///", alpha=0.15,
             )
             ax.add_patch(hatch_rect)
@@ -403,7 +420,7 @@ def draw_hall(hall, hidden_state):
         name = ZONE_DISPLAY[zone]
         rng = ZONE_RANGE[zone]
         status = "  BLOCKED" if blocked else ""
-        label_color = DARK_RED if blocked else DARK_GREY
+        label_color = ERROR if blocked else ON_SURFACE
         ax.text(
             i * third + third / 2, hall.width_m + 3,
             f"{name}\n({rng})\nRisk: {risk:.2f}{status}",
@@ -413,39 +430,40 @@ def draw_hall(hall, hidden_state):
 
     # Equipment markers
     for load in hall.placed_loads:
-        ax.plot(load.x, load.y, "s", color=DARK_RED, markersize=7,
+        ax.plot(load.x, load.y, "s", color=PRIMARY, markersize=7,
                 markeredgecolor="white", markeredgewidth=0.5)
         ax.annotate(
             load.id, (load.x, load.y),
             textcoords="offset points", xytext=(6, -8),
-            fontsize=5.5, color=MID_GREY,
+            fontsize=5.5, color=OUTLINE,
         )
 
     # Legend
     legend_y = -9
     legend_items = [
-        ((0.85, 0.92, 0.98), "Low risk"),
+        ((0.44, 0.97, 0.96), "Low risk"),
         ((0.95, 0.70, 0.55), "Medium risk"),
-        ((0.93, 0.11, 0.14), "Blocked"),
+        ((0.73, 0.10, 0.10), "Blocked"),
     ]
     for j, (c, lbl) in enumerate(legend_items):
         lx = 2 + j * 25
-        ax.add_patch(patches.Rectangle(
-            (lx, legend_y), 4, 3, facecolor=c, edgecolor="#999999", linewidth=0.8,
+        ax.add_patch(patches.FancyBboxPatch(
+            (lx, legend_y), 4, 3, boxstyle="round,pad=0.3",
+            facecolor=c, edgecolor=OUTLINE_VARIANT, linewidth=0.8,
         ))
         ax.text(lx + 5.5, legend_y + 1.5, lbl, fontsize=6.5, va="center",
-                color=DARK_GREY)
+                color=ON_SURFACE)
 
     ax.set_xlim(-2, hall.length_m + 2)
     ax.set_ylim(-14, hall.width_m + 18)
-    ax.set_xlabel("Position (m)", color=DARK_GREY, fontsize=9)
-    ax.set_ylabel("Depth (m)", color=DARK_GREY, fontsize=9)
+    ax.set_xlabel("Position (m)", color=ON_SURFACE, fontsize=9)
+    ax.set_ylabel("Depth (m)", color=ON_SURFACE, fontsize=9)
     ax.set_title("Data Hall \u2014 Top-Down View",
-                 fontsize=11, weight="bold", color=DARK_GREY, pad=10)
+                 fontsize=11, weight="bold", color=ON_SURFACE, pad=10)
     ax.set_aspect("equal")
-    ax.tick_params(colors=DARK_GREY, labelsize=7)
+    ax.tick_params(colors=ON_SURFACE, labelsize=7)
     for spine in ax.spines.values():
-        spine.set_color("#CCCCCC")
+        spine.set_color(OUTLINE_VARIANT)
     plt.tight_layout()
     return fig
 
@@ -455,24 +473,24 @@ def draw_sensors(history):
     df["tick"] = [h["tick"] for h in history]
 
     fig, axes = plt.subplots(2, 2, figsize=(9, 4.5))
-    fig.patch.set_facecolor("white")
+    fig.patch.set_facecolor(SURFACE)
     metrics = [
-        ("temperature_c", "Temperature Trend (\u00b0C)", RED),
-        ("vibration_mm_s", "Vibration Trend (mm/s)", "#FF6F00"),
-        ("power_kw", "Power Trend (kW)", "#455A64"),
-        ("cooling_efficiency", "Cooling Efficiency Trend", GREEN),
+        ("temperature_c", "Temperature Trend (\u00b0C)", ERROR),
+        ("vibration_mm_s", "Vibration Trend (mm/s)", TERTIARY),
+        ("power_kw", "Power Trend (kW)", SECONDARY),
+        ("cooling_efficiency", "Cooling Efficiency Trend", PRIMARY),
     ]
 
     for ax, (col, label, color) in zip(axes.flat, metrics):
-        ax.set_facecolor("white")
-        ax.plot(df["tick"], df[col], color=color, linewidth=1.4)
-        ax.fill_between(df["tick"], df[col], alpha=0.08, color=color)
-        ax.set_title(label, fontsize=8.5, weight="bold", color=DARK_GREY, pad=6)
-        ax.set_xlabel("Time Step", fontsize=7, color=MID_GREY)
-        ax.tick_params(labelsize=6.5, colors=MID_GREY)
-        ax.grid(True, alpha=0.15, color="#CCCCCC")
+        ax.set_facecolor(SURFACE)
+        ax.plot(df["tick"], df[col], color=color, linewidth=1.8)
+        ax.fill_between(df["tick"], df[col], alpha=0.10, color=color)
+        ax.set_title(label, fontsize=8.5, weight="bold", color=ON_SURFACE, pad=6)
+        ax.set_xlabel("Time Step", fontsize=7, color=OUTLINE)
+        ax.tick_params(labelsize=6.5, colors=OUTLINE)
+        ax.grid(True, alpha=0.15, color=OUTLINE_VARIANT)
         for spine in ax.spines.values():
-            spine.set_color("#E0E0E0")
+            spine.set_color(OUTLINE_VARIANT)
 
     plt.tight_layout(h_pad=2.5)
     return fig
@@ -484,104 +502,183 @@ def draw_sensors(history):
 
 CUSTOM_CSS = """
 <style>
-    .block-container { padding-top: 1.2rem; }
+    /* ── M3 Expressive Global ── */
+    .block-container { padding-top: 1.5rem; }
+    html, body, [data-testid="stAppViewContainer"] {
+        background-color: #F5FAFA;
+    }
 
-    /* Sidebar */
-    [data-testid="stSidebar"] { background-color: #B71C1C; }
-    [data-testid="stSidebar"] * { color: #FFFFFF !important; }
+    /* ── Sidebar ── */
+    [data-testid="stSidebar"] {
+        background-color: #E0E8E8;
+        border-right: 1px solid #BEC9C8;
+    }
+    [data-testid="stSidebar"] * { color: #171D1D !important; }
     [data-testid="stSidebar"] button {
-        background-color: #1A1A1A !important;
-        color: #FFFFFF !important;
-        border: 1px solid #444444 !important;
+        background-color: #D5DEDE !important;
+        color: #171D1D !important;
+        border: 1px solid #BEC9C8 !important;
+        border-radius: 100px !important;
+        transition: all 0.2s ease;
+        font-weight: 500;
     }
     [data-testid="stSidebar"] button:hover {
-        background-color: #333333 !important;
-        border-color: #ED1C24 !important;
+        background-color: #BEC9C8 !important;
+        border-color: #006A6A !important;
     }
     [data-testid="stSidebar"] button[kind="primary"] {
-        background-color: #ED1C24 !important;
-        border: 1px solid #ED1C24 !important;
+        background-color: #006A6A !important;
+        color: #FFFFFF !important;
+        border: 1px solid #006A6A !important;
     }
     [data-testid="stSidebar"] button[kind="primary"]:hover {
-        background-color: #FF3333 !important;
+        background-color: #005454 !important;
     }
     [data-testid="stSidebar"] .stSlider label,
     [data-testid="stSidebar"] .stSlider span {
-        color: #FFFFFF !important;
+        color: #171D1D !important;
     }
 
-    /* KPI cards */
+    /* ── KPI Cards ── */
     [data-testid="stMetric"] {
-        background-color: #F5F5F5;
-        padding: 12px 16px;
-        border-radius: 4px;
+        background-color: #FFFFFF;
+        padding: 16px 20px;
+        border-radius: 16px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.06);
+        transition: box-shadow 0.2s ease, transform 0.15s ease;
     }
-    [data-testid="stMetricLabel"] { font-size: 0.85rem; color: #666666; }
-    [data-testid="stMetricValue"] { color: #333333; font-weight: 700; }
+    [data-testid="stMetric"]:hover {
+        box-shadow: 0 4px 12px rgba(0,0,0,0.10);
+        transform: translateY(-1px);
+    }
+    [data-testid="stMetricLabel"] {
+        font-size: 0.82rem;
+        color: #6F7979;
+        font-weight: 500;
+        letter-spacing: 0.02em;
+    }
+    [data-testid="stMetricValue"] {
+        color: #171D1D;
+        font-weight: 700;
+        font-size: 1.5rem;
+    }
 
     /* Visible state row */
     .visible-state-row [data-testid="stMetric"] {
-        border-left: 4px solid #1565C0;
+        border-left: 4px solid #006A6A;
     }
     /* Hidden state row */
     .hidden-state-row [data-testid="stMetric"] {
-        border-left: 4px solid #B71C1C;
-        background-color: #FFF8F8;
+        border-left: 4px solid #4B607C;
+        background-color: #F0F3F8;
     }
 
-    /* Callout box */
+    /* ── Callout Box ── */
     .kit-callout {
-        background: #FFF8E1;
-        border-left: 4px solid #FFB300;
-        padding: 14px 18px;
-        border-radius: 4px;
-        margin-bottom: 1rem;
+        background: #D3E4FF;
+        border-left: 4px solid #4B607C;
+        padding: 16px 20px;
+        border-radius: 16px;
+        margin-bottom: 1.2rem;
         font-size: 0.92rem;
-        color: #333333;
+        color: #041C35;
         line-height: 1.6;
     }
-    .kit-callout strong { color: #E65100; }
+    .kit-callout strong { color: #4B607C; }
 
-    /* Placement outcome card */
+    /* ── Placement Cards ── */
     .placement-card {
-        padding: 14px 18px;
-        border-radius: 6px;
+        padding: 16px 20px;
+        border-radius: 16px;
         margin-bottom: 0.5rem;
         font-size: 0.9rem;
-        line-height: 1.5;
+        line-height: 1.6;
+        transition: box-shadow 0.2s ease;
     }
     .placement-accepted {
-        background: #E8F5E9;
+        background: #CCE8E7;
         border-left: 4px solid #2E7D32;
-        color: #1B5E20;
+        color: #051F1F;
     }
     .placement-blocked {
-        background: #FFEBEE;
-        border-left: 4px solid #B71C1C;
-        color: #B71C1C;
+        background: #FFEDEA;
+        border-left: 4px solid #BA1A1A;
+        color: #BA1A1A;
     }
 
-    /* Recommendation box */
+    /* ── Recommendation Box ── */
     .rec-box {
-        background: #E3F2FD;
-        border-left: 4px solid #1565C0;
-        padding: 12px 16px;
-        border-radius: 4px;
+        background: rgba(111, 247, 246, 0.3);
+        border-left: 4px solid #006A6A;
+        padding: 14px 18px;
+        border-radius: 16px;
         font-size: 0.9rem;
-        color: #0D47A1;
-        line-height: 1.5;
+        color: #002020;
+        line-height: 1.6;
     }
 
-    /* Narrative summary */
+    /* ── Narrative Summary ── */
     .narrative-box {
-        background: #F3E5F5;
-        border-left: 4px solid #7B1FA2;
-        padding: 14px 18px;
-        border-radius: 4px;
+        background: #D3E4FF;
+        border-left: 4px solid #4B607C;
+        padding: 16px 20px;
+        border-radius: 16px;
         font-size: 0.9rem;
-        color: #4A148C;
-        line-height: 1.5;
+        color: #041C35;
+        line-height: 1.6;
         margin-top: 0.5rem;
+    }
+
+    /* ── M3 Pill Buttons (main area) ── */
+    .stButton > button {
+        border-radius: 100px !important;
+        font-weight: 600;
+        transition: all 0.2s ease;
+        letter-spacing: 0.02em;
+    }
+
+    /* ── Expanders ── */
+    [data-testid="stExpander"] {
+        border-radius: 16px;
+        border: 1px solid #BEC9C8;
+        overflow: hidden;
+    }
+
+    /* ── DataFrames ── */
+    [data-testid="stDataFrame"] {
+        border-radius: 12px;
+        overflow: hidden;
+    }
+
+    /* ── Dividers ── */
+    hr {
+        border-color: #BEC9C8 !important;
+        opacity: 0.4;
+    }
+
+    /* ── Section Headers ── */
+    .m3-section-header {
+        color: #171D1D;
+        font-size: 1.25rem;
+        font-weight: 700;
+        margin-top: 1.5rem;
+        margin-bottom: 0.5rem;
+        letter-spacing: -0.01em;
+    }
+
+    /* ── Inputs ── */
+    [data-testid="stTextInput"] input,
+    [data-testid="stNumberInput"] input {
+        border-radius: 12px !important;
+        border-color: #BEC9C8 !important;
+    }
+    [data-testid="stTextInput"] input:focus,
+    [data-testid="stNumberInput"] input:focus {
+        border-color: #006A6A !important;
+        box-shadow: 0 0 0 1px #006A6A !important;
+    }
+    [data-testid="stSelectbox"] > div > div {
+        border-radius: 12px !important;
     }
 </style>
 """
@@ -597,9 +694,10 @@ def main():
 
     # ---- Header ----
     st.markdown(
-        f'<h1 style="color:{RED}; margin-bottom:0;">Kit_Cap</h1>'
-        f'<p style="color:{MID_GREY}; margin-top:0; font-size:1.05rem; '
-        f'font-style:italic;">Decision-driven digital twin for safe '
+        f'<h1 style="color:{PRIMARY}; margin-bottom:0; font-size:2.5rem; '
+        f'font-weight:800; letter-spacing:-0.02em;">Kit_Cap</h1>'
+        f'<p style="color:{OUTLINE}; margin-top:0; font-size:1.1rem; '
+        f'font-weight:400;">Decision-driven digital twin for safe '
         f'capacity placement</p>',
         unsafe_allow_html=True,
     )
@@ -658,9 +756,9 @@ def main():
     # ---- Tick / Status ----
     current_tick = st.session_state.history[-1]["tick"] if st.session_state.history else 0
     if auto_run:
-        status_html = '<span style="color:#2E7D32; font-weight:700;">Running</span>'
+        status_html = f'<span style="color:{PRIMARY}; font-weight:700;">Running</span>'
     else:
-        status_html = '<span style="color:#FFFFFF; font-weight:600;">Idle</span>'
+        status_html = f'<span style="color:{ON_SURFACE}; font-weight:600;">Idle</span>'
 
     st.sidebar.markdown(
         f'<p style="margin-top:0.6rem; font-size:1.05rem;">'
@@ -695,9 +793,9 @@ def main():
     # Visible state metrics
     vis = st.container()
     vis.markdown(
-        '<p style="margin-bottom:0.2rem; font-size:0.8rem; font-weight:700; '
-        'color:#1565C0; text-transform:uppercase; letter-spacing:0.05em;">'
-        'Visible State &mdash; what operators can see</p>',
+        f'<p style="margin-bottom:0.2rem; font-size:0.8rem; font-weight:700; '
+        f'color:{PRIMARY}; text-transform:uppercase; letter-spacing:0.05em;">'
+        f'Visible State &mdash; what operators can see</p>',
         unsafe_allow_html=True,
     )
     with vis:
@@ -714,10 +812,10 @@ def main():
     # Hidden state metrics
     hid = st.container()
     hid.markdown(
-        '<p style="margin-bottom:0.2rem; margin-top:0.8rem; font-size:0.8rem; '
-        'font-weight:700; color:#B71C1C; text-transform:uppercase; '
-        'letter-spacing:0.05em;">'
-        'Hidden State &mdash; inferred by the digital twin</p>',
+        f'<p style="margin-bottom:0.2rem; margin-top:0.8rem; font-size:0.8rem; '
+        f'font-weight:700; color:{TERTIARY}; text-transform:uppercase; '
+        f'letter-spacing:0.05em;">'
+        f'Hidden State &mdash; inferred by the digital twin</p>',
         unsafe_allow_html=True,
     )
     with hid:
@@ -734,8 +832,8 @@ def main():
     # ---- Placement status message ----
     if st.session_state.placement_status_msg:
         st.markdown(
-            f'<div class="kit-callout" style="background:#E8F5E9; '
-            f'border-left-color:#2E7D32; margin-top:0.5rem;">'
+            f'<div class="kit-callout" style="background:{SECONDARY_CONTAINER}; '
+            f'border-left-color:{PRIMARY}; margin-top:0.5rem;">'
             f'{st.session_state.placement_status_msg}</div>',
             unsafe_allow_html=True,
         )
@@ -744,7 +842,9 @@ def main():
     col_place, col_rec = st.columns(2)
 
     with col_place:
-        st.markdown("##### Latest Placement Decision")
+        st.markdown(f'<p style="color:{ON_SURFACE}; font-size:1.05rem; '
+                    f'font-weight:600; margin-bottom:0.3rem;">Latest Placement Decision</p>',
+                    unsafe_allow_html=True)
         lp = st.session_state.last_placement
         if lp is not None:
             zone_label = ZONE_DISPLAY.get(lp["zone"], lp["zone"])
@@ -777,7 +877,9 @@ def main():
             st.caption("No placement attempts yet.")
 
     with col_rec:
-        st.markdown("##### Placement Recommendation")
+        st.markdown(f'<p style="color:{ON_SURFACE}; font-size:1.05rem; '
+                    f'font-weight:600; margin-bottom:0.3rem;">Placement Recommendation</p>',
+                    unsafe_allow_html=True)
         rec_zone, rec_risk = _get_recommendation(engine.hidden_state)
         if rec_zone is not None:
             st.markdown(
@@ -800,7 +902,8 @@ def main():
 
     # ---- Hall visualization ----
     st.markdown("---")
-    st.markdown("##### Data Hall Layout & Zone Risk")
+    st.markdown(f'<p class="m3-section-header">Data Hall Layout & Zone Risk</p>',
+                unsafe_allow_html=True)
     fig_hall = draw_hall(engine.hall, engine.hidden_state)
     st.pyplot(fig_hall)
     plt.close(fig_hall)
@@ -822,7 +925,8 @@ def main():
     # PLACEMENT DECISION DEMO
     # ================================================================
     st.markdown("---")
-    st.markdown("##### Placement Decision Demo")
+    st.markdown(f'<p class="m3-section-header">Placement Decision Demo</p>',
+                unsafe_allow_html=True)
     st.caption(
         "Test the twin's placement logic. Choose equipment and a target "
         "zone, or run the scripted story to see reject-then-redirect."
@@ -979,7 +1083,8 @@ def main():
 
     # ---- Sensor trends ----
     st.markdown("---")
-    st.markdown("##### Sensor Trends")
+    st.markdown(f'<p class="m3-section-header">Sensor Trends</p>',
+                unsafe_allow_html=True)
     fig_sensors = draw_sensors(history)
     st.pyplot(fig_sensors)
     plt.close(fig_sensors)
